@@ -28,6 +28,11 @@ describe('Testing crest structure detection', () => {
     assert.equal(crestUtils.isNotStructure(/([a-z])/g), true);
   });
 
+  it('should detect null and undefined', () => {
+    assert.equal(crestUtils.isNotStructure(null), true);
+    assert.equal(crestUtils.isNotStructure(undefined), true);
+  });
+
   it('should detect structures', () => {
     assert.equal(crestUtils.isNotStructure({}), false);
     assert.equal(crestUtils.isNotStructure({ hello: 'world' }), false);
@@ -59,24 +64,51 @@ describe('Testing crest url path', () => {
   });
 
   it('should convert camel case', function () {
-    assert.equal(crestUtils.makeUrl(''), '');
-    assert.equal(crestUtils.makeUrl('Accounts'), 'accounts');
-    assert.equal(crestUtils.makeUrl('UsersDetails'), 'users/details');
-    assert.equal(crestUtils.makeUrl('CompaniesCustomersLikes'), 'companies/customers/likes');
+    assert.equal(crestUtils.makeUrlPath(''), '');
+    assert.equal(crestUtils.makeUrlPath('Accounts'), 'accounts');
+    assert.equal(crestUtils.makeUrlPath('UsersDetails'), 'users/details');
+    assert.equal(crestUtils.makeUrlPath('CompaniesCustomersLikes'), 'companies/customers/likes');
   });
 
   it('should accept keywords', function () {
     assert.equal(
-      crestUtils.makeUrl('Accounts', [], { Accounts: 'users' }),
+      crestUtils.makeUrlPath('Accounts', { Accounts: 'users' }),
       'users'
     );
     assert.equal(
-      crestUtils.makeUrl('UsersDetails', [], { UsersDetails: 'users-details' }),
+      crestUtils.makeUrlPath('UsersDetails', { UsersDetails: 'users-details' }),
       'users-details'
     );
     assert.equal(
-      crestUtils.makeUrl('CompaniesCustomersStats', [], { CustomersStats: 'customers-stats' }),
+      crestUtils.makeUrlPath('CompaniesCustomersStats', { CustomersStats: 'customers-stats' }),
       'companies/customers-stats'
+    );
+  });
+
+  it('should interpolate arguments', function () {
+    assert.equal(
+      crestUtils.makeUrl('Accounts', [133], { Accounts: 'users' }),
+      'users/133'
+    );
+    assert.equal(
+      crestUtils.makeUrl('UsersDetails', [12, 13], { UsersDetails: 'users-details' }),
+      'users-details/12'
+    );
+    assert.equal(
+      crestUtils.makeUrl('CompaniesCustomersStats', [134, 15], { CustomersStats: 'customers-stats' }),
+      'companies/134/customers-stats/15'
+    );
+    assert.equal(
+      crestUtils.makeUrl('Accounts', [133, { name: 'Jack' }], { Accounts: 'users' }),
+      'users/133?name=Jack'
+    );
+    assert.equal(
+      crestUtils.makeUrl('Accounts', [133, { 'name[$ne]': 'Jack' }], { Accounts: 'users' }),
+      'users/133?name%5B%24ne%5D=Jack'
+    );
+    assert.equal(
+      crestUtils.makeUrl('Accounts', [133, { name: ['Jack', 'Daniels'] }], { Accounts: 'users' }),
+      'users/133?name=Jack&name=Daniels'
     );
   });
 });
