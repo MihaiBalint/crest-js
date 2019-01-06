@@ -30,7 +30,7 @@ Install dependencies:
 
 ```shell
 $ npm install
-$ make test
+$ npm test
 ```
 
 ## License
