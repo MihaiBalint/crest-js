@@ -1,3 +1,6 @@
+/* eslint arrow-body-style: ["off"] */
+/* eslint global-require: ["off"] */
+
 'use strict';
 
 const querystring = require('querystring');
@@ -36,6 +39,8 @@ const makeUrlPath = (urlKey, pathKeywords) => {
 
 
 const interpolateArgs = (url, args) => {
+  args = args || [];
+
   // Stage 1: path arguments
   const [pathArgs, nonPathArgs] = args.reduce(([path, nonPath], arg) => {
     if (isNotStructure(arg)) {
@@ -48,7 +53,7 @@ const interpolateArgs = (url, args) => {
     const a = pathArgs.shift();
     return a ? `/${a}/` : '/';
   });
-  if (pathArgs) {
+  if (pathArgs.length > 0) {
     // Append final path arguments
     url = `${url}/${pathArgs.shift()}`;
   }
@@ -81,35 +86,90 @@ const interpolateArgs = (url, args) => {
 };
 
 
-const makeUrl = (urlKey, args, pathKeywords) => {
+const makeUrlAndBody = (urlKey, args, pathKeywords) => {
   const path = makeUrlPath(urlKey, pathKeywords);
-  const urlAndBody = interpolateArgs(path, args);
-  return urlAndBody[0];
+  return interpolateArgs(path, args);
 };
 
 
-exports.crest = ({ baseUrl, specialFragments }) => {
-  console.log('Shut up eslint');
+const axiosRequest = (method, url, headers, body) => {
+  /* eslint import/no-unresolved: ["off"] */
+  /* eslint import/no-extraneous-dependencies: ["off"] */
+  const axios = require('axios');
 
-  return new Proxy(
+  return axios
+    .request(Object.assign(
+      { method, url },
+      headers && { headers },
+      body && { data: body }
+    ));
+};
+
+
+class Client {
+  constructor() {
+    this.requestLib = axiosRequest;
+    this.interceptResponse = null;
+    this.authHeader = null;
+    this.responseInterceptors = [];
+  }
+
+  request(method, url, body) {
+    return this
+      .requestLib(
+        method, url,
+        Object.assign({}, this.authHeader),
+        body
+      )
+      .then((response) => {
+        return this.responseInterceptors.reduce(
+          (processedResponse, interceptor) => interceptor(processedResponse, method, url, body),
+          response
+        );
+      });
+  }
+
+  authorizationBearer(token) {
+    this.authHeader = { Authorization: `Bearer ${token}` };
+  }
+
+  addResponseInterceptor(interceptor) {
+    this.responseInterceptors.push(interceptor);
+  }
+
+  useAxios() {
+    this.requestLib = axiosRequest;
+  }
+}
+
+
+exports.crest = ({ baseUrl, specialFragments }) => {
+  const client = new Client();
+  const separator = baseUrl.endsWith('/') ? '' : '/';
+  const proxy = new Proxy(
     {}, {
       get(target, propKey) {
         const [method, strippedKey] = splitMethod(propKey);
-        if (!method) return;
-
+        if (method) {
+          return (...args) => {
+            const [url, body] = makeUrlAndBody(strippedKey, args, specialFragments);
+            return client.request(method, `${baseUrl}${separator}${url}`, body);
+          };
+        }
         return (...args) => {
-          const url = makeUrl(strippedKey, args, specialFragments);
-          return `${baseUrl}/${url}`;
+          client[propKey](...args);
+          return proxy;
         };
       }
     }
   );
+  return proxy;
 };
 
 
 exports.crestUtils = {
   isNotStructure,
-  makeUrl,
+  makeUrlAndBody,
   makeUrlPath,
   interpolateArgs,
   splitMethod,

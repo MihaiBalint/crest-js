@@ -1,6 +1,9 @@
+/* eslint arrow-body-style: ["off"] */
+
 'use strict';
 
 const { assert } = require('chai');
+const mockServer = require('mockttp').getLocal({ debug: false });
 const { crest, crestUtils } = require('../src');
 
 
@@ -63,6 +66,16 @@ describe('Testing crest url path', () => {
     assert.equal(url, 'Accounts');
   });
 
+  it('should split http methods, edge case', function () {
+    let [method, url] = crestUtils.splitMethod('get');
+    assert.equal(method, 'get');
+    assert.equal(url, '');
+
+    [method, url] = crestUtils.splitMethod('post');
+    assert.equal(method, 'post');
+    assert.equal(url, '');
+  });
+
   it('should convert camel case', function () {
     assert.equal(crestUtils.makeUrlPath(''), '');
     assert.equal(crestUtils.makeUrlPath('Accounts'), 'accounts');
@@ -86,36 +99,97 @@ describe('Testing crest url path', () => {
   });
 
   it('should interpolate arguments', function () {
+    const makeUrl = (urlKey, args, pathKeywords) => {
+      return crestUtils.makeUrlAndBody(urlKey, args, pathKeywords)[0];
+    };
+    assert.equal(makeUrl('users', []), 'users');
+    assert.equal(makeUrl('users'), 'users');
+    assert.equal(makeUrl(''), '');
     assert.equal(
-      crestUtils.makeUrl('Accounts', [133], { Accounts: 'users' }),
+      makeUrl('Accounts', [133], { Accounts: 'users' }),
       'users/133'
     );
     assert.equal(
-      crestUtils.makeUrl('UsersDetails', [12, 13], { UsersDetails: 'users-details' }),
+      makeUrl('UsersDetails', [12, 13], { UsersDetails: 'users-details' }),
       'users-details/12'
     );
     assert.equal(
-      crestUtils.makeUrl('CompaniesCustomersStats', [134, 15], { CustomersStats: 'customers-stats' }),
+      makeUrl('CompaniesCustomersStats', [134, 15], { CustomersStats: 'customers-stats' }),
       'companies/134/customers-stats/15'
     );
     assert.equal(
-      crestUtils.makeUrl('Accounts', [133, { name: 'Jack' }], { Accounts: 'users' }),
+      makeUrl('Accounts', [133, { name: 'Jack' }], { Accounts: 'users' }),
       'users/133?name=Jack'
     );
     assert.equal(
-      crestUtils.makeUrl('Accounts', [133, { 'name[$ne]': 'Jack' }], { Accounts: 'users' }),
+      makeUrl('Accounts', [133, { 'name[$ne]': 'Jack' }], { Accounts: 'users' }),
       'users/133?name%5B%24ne%5D=Jack'
     );
     assert.equal(
-      crestUtils.makeUrl('Accounts', [133, { name: ['Jack', 'Daniels'] }], { Accounts: 'users' }),
+      makeUrl('Accounts', [133, { name: ['Jack', 'Daniels'] }], { Accounts: 'users' }),
       'users/133?name=Jack&name=Daniels'
     );
   });
 });
 
 describe('Testing crest proxy', () => {
-  it('should instantiate crest', function () {
-    const api = crest({ baseUrl: 'http://localhost:5000' });
+  const u1 = { id: 101, name: 'Jane' };
+  const u2 = { id: 102, name: 'Jack' };
+  const u3 = { id: 103, name: 'Jenny' };
+  const u4 = { id: 104, name: 'Jim' };
+  const users = [u1, u2, u3, u4];
+
+  beforeEach(() => {
+    return mockServer
+      .start(5005)
+      .then(() => {
+        return Promise.all([
+          mockServer.get('/').thenJSON(200, { message: 'Hello there' }),
+          mockServer.get('/users').thenJSON(200, { data: users }),
+          ...(users.map(u => mockServer.get(`/users/${u.id}`).thenJSON(200, u))),
+        ]);
+      });
+  });
+
+  afterEach(() => mockServer.stop());
+
+  it('should request correctly with no trailing backslashes', function () {
+    return crest({ baseUrl: 'http://localhost:5005' })
+      .get()
+      .then((response) => {
+        assert.equal(response.data.message, 'Hello there');
+      });
+  });
+
+  it('should request correctly with trailing backslash', function () {
+    return crest({ baseUrl: 'http://localhost:5005/' })
+      .get()
+      .then((response) => {
+        assert.equal(response.data.message, 'Hello there');
+      });
+  });
+
+  it('should do basic axios requests', function () {
+    const api = crest({ baseUrl: 'http://localhost:5005' })
+      .authorizationBearer('123')
+      .useAxios()
+      .addResponseInterceptor((response, method) => {
+        const data = response.data;
+        return (method === 'get' && data.data) ? data.data : data;
+      });
     assert.exists(api);
+
+    return api
+      .getUsers()
+      .then((usersResponse) => {
+        assert.equal(usersResponse.length, users.length);
+        assert.equal(usersResponse[0].id, users[0].id);
+
+        return api.getUsers(103);
+      })
+      .then((user) => {
+        assert.equal(user.id, 103);
+        assert.equal(user.name, users[2].name);
+      });
   });
 });
