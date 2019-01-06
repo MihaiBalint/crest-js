@@ -79,8 +79,8 @@ describe('Testing crest url path', () => {
   it('should convert camel case', function () {
     assert.equal(crestUtils.makeUrlPath(''), '');
     assert.equal(crestUtils.makeUrlPath('Accounts'), 'accounts');
-    assert.equal(crestUtils.makeUrlPath('UsersDetails'), 'users/details');
-    assert.equal(crestUtils.makeUrlPath('CompaniesCustomersLikes'), 'companies/customers/likes');
+    assert.equal(crestUtils.makeUrlPath('UsersDetails'), 'users/${}/details');
+    assert.equal(crestUtils.makeUrlPath('CompaniesCustomersLikes'), 'companies/${}/customers/${}/likes');
   });
 
   it('should accept keywords', function () {
@@ -94,7 +94,7 @@ describe('Testing crest url path', () => {
     );
     assert.equal(
       crestUtils.makeUrlPath('CompaniesCustomersStats', { CustomersStats: 'customers-stats' }),
-      'companies/customers-stats'
+      'companies/${}/customers-stats'
     );
   });
 
@@ -111,7 +111,7 @@ describe('Testing crest url path', () => {
     );
     assert.equal(
       makeUrl('UsersDetails', [12, 13], { UsersDetails: 'users-details' }),
-      'users-details/12'
+      'users-details/12/13'
     );
     assert.equal(
       makeUrl('CompaniesCustomersStats', [134, 15], { CustomersStats: 'customers-stats' }),
@@ -128,6 +128,26 @@ describe('Testing crest url path', () => {
     assert.equal(
       makeUrl('Accounts', [133, { name: ['Jack', 'Daniels'] }], { Accounts: 'users' }),
       'users/133?name=Jack&name=Daniels'
+    );
+  });
+
+  it('should interpolate consecutive arguments #1', () => {
+    assert.equal(
+      crestUtils.makeUrlAndBody(
+        'reposStatsCommitActivity', [':owner', ':repo'],
+        { repos: 'repos/${}/${}', CommitActivity: 'commit_activity' }
+      )[0],
+      'repos/:owner/:repo/stats/commit_activity'
+    );
+  });
+
+  it('should interpolate consecutive arguments #2', () => {
+    assert.equal(
+      crestUtils.makeUrlAndBody(
+        'userStarred', [':owner', ':repo'],
+        { userStarred: 'user/starred/${}/${}' }
+      )[0],
+      'user/starred/:owner/:repo'
     );
   });
 });
@@ -147,6 +167,12 @@ describe('Testing crest proxy', () => {
           mockServer.get('/').thenJSON(200, { message: 'Hello there' }),
           mockServer.get('/users').thenJSON(200, { data: users }),
           ...(users.map(u => mockServer.get(`/users/${u.id}`).thenJSON(200, u))),
+          mockServer.get('/users/MihaiBalint/orgs').thenJSON(200, { data: { name: 'github' } }),
+          mockServer.get('/users/MihaiBalint/repos').thenJSON(200, { data: { name: 'crest-js' } }),
+          mockServer.put('/user/starred/MihaiBalint/crest-js').thenJSON(200, { }),
+          mockServer.delete('/user/starred/MihaiBalint/crest-js').thenJSON(200, { }),
+          mockServer.get('/repos/MihaiBalint/crest-js/stats/commit_activity').thenJSON(200, { }),
+          mockServer.post('/authorizations').thenJSON(200, { }),
         ]);
       });
   });
@@ -168,6 +194,37 @@ describe('Testing crest proxy', () => {
         assert.equal(response.data.message, 'Hello there');
       });
   });
+
+  it('should work with github', async () => {
+    const hash = 'your-secret-here';
+    const github = crest({
+      baseUrl: 'http://localhost:5005/',
+      specialFragments: {
+        UserStarred: 'user/starred',
+        CommitActivity: 'commit_activity',
+        Repos: 'repos/${}/${}'
+      }
+    });
+    github.authorizationBasic(hash);
+
+    // GET /users/MihaiBalint/orgs
+    assert.exists(await github.getUsersOrgs('MihaiBalint'));
+
+    // GET /users/MihaiBalint/repos
+    assert.exists(await github.getUsersRepos('MihaiBalint'));
+
+    // PUT /user/starred/:owner/:repo - Star a repository
+    await github.putUserStarred('MihaiBalint', 'crest-js');
+
+    // DELETE /user/starred/:owner/:repo - Unstar a repository
+    await github.deleteUserStarred('MihaiBalint', 'crest-js');
+
+    // GET /repos/:owner/:repo/stats/commit_activity - Get the last year of commit activity data
+    assert.exists(await github.getReposStatsCommitActivity('MihaiBalint', 'crest-js'));
+
+    // POST /authorizations
+    assert.exists(await github.postAuthorizations({ json: { scopes: ['public_repo'] } }));
+  }).timeout(50000);
 
   it('should do basic axios requests', function () {
     const api = crest({ baseUrl: 'http://localhost:5005' })

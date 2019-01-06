@@ -13,8 +13,6 @@ const isNotStructure = (arg) => {
   return acceptedArgTypes.reduce((found, type) => found + (argToString === `[object ${type}]`), 0) > 0;
 };
 
-const capitalize = str => str.replace(/^\w/, c => c.toUpperCase());
-
 
 const splitMethod = (urlKey) => {
   const method = httpMethods.find(
@@ -25,16 +23,16 @@ const splitMethod = (urlKey) => {
 
 
 const makeUrlPath = (urlKey, pathKeywords) => {
-  let url = urlKey;
-
-  Object.keys(pathKeywords || {}).forEach((fragment) => {
-    url = url.replace(fragment, capitalize(pathKeywords[fragment]));
-  });
-
-  url = url
-    .replace(/([a-z])([A-Z])/g, '$1/$2')
+  const sep = '/${}/';
+  return Object
+    .keys(pathKeywords || {}).reduce((url, fragment) => {
+      return url
+        .replace(fragment, `${sep}${pathKeywords[fragment]}`.toLowerCase())
+        .substring(url.indexOf(fragment) === 0 ? sep.length : 0);
+    }, urlKey)
+    .replace(/([a-z0-9])([A-Z])/g, `$1${sep}$2`)
+    .replace(/([}])([A-Z])/g, '$1/$2')
     .toLowerCase();
-  return url;
 };
 
 
@@ -49,11 +47,11 @@ const interpolateArgs = (url, args) => {
     return [path, [...nonPath, arg]];
   }, [[], []]);
 
-  url = url.replace(/\//g, () => {
+  url = url.replace(/\/\$\{\}/g, () => {
     const a = pathArgs.shift();
-    return a ? `/${a}/` : '/';
+    return a ? `/${a}` : '';
   });
-  if (pathArgs.length > 0) {
+  while (pathArgs.length > 0) {
     // Append final path arguments
     url = `${url}/${pathArgs.shift()}`;
   }
@@ -131,6 +129,10 @@ class Client {
 
   authorizationBearer(token) {
     this.authHeader = { Authorization: `Bearer ${token}` };
+  }
+
+  authorizationBasic(hash) {
+    this.authHeader = { Authorization: `Basic ${hash}` };
   }
 
   addResponseInterceptor(interceptor) {

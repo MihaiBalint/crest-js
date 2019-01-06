@@ -8,11 +8,11 @@ Check out the awesome examples below:
 
 ```js
 const crest = require('crest-js');
-
-const github = crest({ baseUrl: 'https://api.github.com' });
+const github = crest({ baseUrl: 'https://api.github.com' })
+  .authorizationBasic('your-secret-here');
 
 const orgs = await github.getUsersOrgs('MihaiBalint');
-
+const repos = await github.getUsersRepos('MihaiBalint');
 const auth = await github.postAuthorizations({ json: { 'scopes': ['public_repo'] } });
 ```
 
