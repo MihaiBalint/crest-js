@@ -12,31 +12,43 @@ const crest = require('crest-js');
 // Let's play with a contrived API for a database of companies and their staff
 const api = crest({ baseUrl: 'https://api.example.com' })
   .authorizationBasic('your-secret-here');
+```
 
-// GET /companies/11335577/branches
+Let's try a simple HTTP request: **GET /companies/11335577/branches**
+```js
 api
   .getCompaniesBranches('11335577')
   .then((branches) => {
     console.log(', '.join(branches.map((branch) => branch.location)));
   });
+```
 
-// PUT /companies/11335577/branches/2468
+Now let's update the location for a company branch: **PUT /companies/11335577/branches/2468**
+
+```js
 api
   .putCompaniesBranches('11335577', '2468', {json: {location: '186 1st Avenue, NY'} })
+```
 
-// GET /companies/11335577/staff?branch_id=2468
+And finally let's send a reminder to all staff accounts from a company branch. 
+```js
+const the_message = 'Remember to announce your time off before EOB today.';
 api
-  .getCompaniesStaff('11335577', {branch_id: '2468'})
+  .getCompaniesStaff('11335577', {branch_id: '2468'}) // GET /companies/11335577/staff?branch_id=2468
   .then((staff) => {
-    const the_message = 'Remember to announce your time off before EOB today.';
     return Promise.all(staff.map((member) => {
       // POST /companies/11335577/staff/{id}/messages
       // json payload: {"message": "Remember to announce..."}
       return api.postCompaniesStaffMessages('11335577', member.id, {json: {message: the_message}})
-    }));
+    }))
+    .then(() => {
+      console.log('Message sent.');
+    });
   });
+```
 
-// Or let's do some github using async/await
+Alternatively we could do something with the github API using async/await
+```js
 const github = crest({ baseUrl: 'https://api.github.com' })
   .authorizationBasic('your-secret-here');
 
