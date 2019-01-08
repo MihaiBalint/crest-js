@@ -4,7 +4,7 @@ Crest JS is a small and friendly Client for REST APIs. Unlike most HTTP clients 
 
 Inspired by [this medium article](https://medium.com/dailyjs/how-to-use-javascript-proxies-for-fun-and-profit-365579d4a9f8)
 
-Check out the awesome examples below:
+## Check out the awesome examples below
 
 ```js
 const crest = require('crest-js');
@@ -14,32 +14,38 @@ const api = crest({ baseUrl: 'https://api.example.com' })
   .authorizationBasic('your-secret-here');
 ```
 
-Let's try a simple HTTP request: **GET /companies/11335577/branches**
+Let's try a simple HTTP request
 ```js
 api
   .getCompaniesBranches('11335577')
+  // translates to: GET /companies/11335577/branches
   .then((branches) => {
     console.log(', '.join(branches.map((branch) => branch.location)));
   });
 ```
 
-Now let's update the location for a company branch: **PUT /companies/11335577/branches/2468**
-
+Now let's update the location for a company branch
 ```js
 api
   .putCompaniesBranches('11335577', '2468', {json: {location: '186 1st Avenue, NY'} })
+  // translates to: PUT /companies/11335577/branches/2468
+  // payload:       {location: '186 1st Avenue, NY'}
 ```
 
 And finally let's send a reminder to all staff accounts from a company branch. 
 ```js
 const the_message = 'Remember to announce your time off before EOB today.';
 api
-  .getCompaniesStaff('11335577', {branch_id: '2468'}) // GET /companies/11335577/staff?branch_id=2468
+  .getCompaniesStaff('11335577', {branch_id: '2468'})
+  // translates to: GET /companies/11335577/staff?branch_id=2468
+  
   .then((staff) => {
     return Promise.all(staff.map((member) => {
-      // POST /companies/11335577/staff/{id}/messages
-      // json payload: {"message": "Remember to announce..."}
-      return api.postCompaniesStaffMessages('11335577', member.id, {json: {message: the_message}})
+
+      return api.postCompaniesStaffMessages('11335577', member.id, {json: {message: the_message}});
+      // translates to: POST /companies/11335577/staff/{id}/messages
+      // payload:       {"message": "Remember to announce..."}
+
     }))
     .then(() => {
       console.log('Message sent.');
