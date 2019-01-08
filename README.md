@@ -1,10 +1,14 @@
 # crest-js
 
-Crest JS is a small and friendly Client for REST APIs. Unlike most HTTP clients out there, Crest does not accept URLs as strings. URLs are instead constructed with Javascript Proxies and an opinionated convention for method names. This makes your code more readable as you no longer have to understand the complex string shuffling commonly associated with building URLs.
+Crest JS is a small and friendly Client for REST APIs. Unlike most HTTP clients
+out there, Crest does not accept URLs as strings. URLs are instead constructed with
+Javascript Proxies and an opinionated convention for method names. This makes your
+code more readable as you no longer have to understand the complex string shuffling
+commonly associated with building URLs.
 
 Inspired by [this medium article](https://medium.com/dailyjs/how-to-use-javascript-proxies-for-fun-and-profit-365579d4a9f8)
 
-## Check out the awesome examples below
+Check out the awesome examples below
 
 ```js
 const crest = require('crest-js');
@@ -72,11 +76,9 @@ const auth = await github.postAuthorizations({ json: { 'scopes': ['public_repo']
 
 ```
 
-So what actually happened there and how does it work with any API?
-```js
-
-
-```
+So what actually happened there? Crest converts camel-case method names to URLs
+and interpolates method arguments to obtain the url path. Query parameters and
+request payloads are added using dict arguments.
 
 ## Installation
 
