@@ -19,6 +19,7 @@ Let's try a simple HTTP request
 api
   .getCompaniesBranches('11335577')
   // translates to: GET /companies/11335577/branches
+
   .then((branches) => {
     console.log(', '.join(branches.map((branch) => branch.location)));
   });
@@ -29,7 +30,7 @@ Now let's update the location for a company branch
 api
   .putCompaniesBranches('11335577', '2468', {json: {location: '186 1st Avenue, NY'} })
   // translates to: PUT /companies/11335577/branches/2468
-  // payload:       {location: '186 1st Avenue, NY'}
+  // payload:       { "location": "186 1st Avenue, NY" }
 ```
 
 And finally let's send a reminder to all staff accounts from a company branch. 
@@ -44,7 +45,7 @@ api
 
       return api.postCompaniesStaffMessages('11335577', member.id, {json: {message: the_message}});
       // translates to: POST /companies/11335577/staff/{id}/messages
-      // payload:       {"message": "Remember to announce..."}
+      // payload:       { "message": "Remember to announce..." }
 
     }))
     .then(() => {
@@ -58,12 +59,17 @@ Alternatively we could do something with the github API using async/await
 const github = crest({ baseUrl: 'https://api.github.com' })
   .authorizationBasic('your-secret-here');
 
-// GET /users/MihaiBalint/orgs
 const orgs = await github.getUsersOrgs('MihaiBalint');
-// GET /users/MihaiBalint/repos
+// translates to: GET /users/MihaiBalint/orgs
+
 const repos = await github.getUsersRepos('MihaiBalint');
+// translates to: GET /users/MihaiBalint/repos
+
 // POST /authorizations
 const auth = await github.postAuthorizations({ json: { 'scopes': ['public_repo'] } });
+// translates to: POST /authorizations
+// payload:       { "scopes": ["public_repo"] }
+
 ```
 
 So what actually happened there and how does it work with any API?
