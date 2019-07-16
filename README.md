@@ -11,7 +11,7 @@ Inspired by [this medium article](https://medium.com/dailyjs/how-to-use-javascri
 Check out the awesome examples below
 
 ```js
-const crest = require('crest-js');
+const { crest } = require('crest-js');
 
 // Let's play with a contrived API for a database of companies and their staff
 const api = crest({ baseUrl: 'https://api.example.com' })
