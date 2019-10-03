@@ -173,6 +173,13 @@ describe('Testing crest proxy', () => {
           mockServer.delete('/user/starred/MihaiBalint/crest-js').thenJSON(200, { }),
           mockServer.get('/repos/MihaiBalint/crest-js/stats/commit_activity').thenJSON(200, { }),
           mockServer.post('/authorizations').thenJSON(200, { }),
+          mockServer
+            .get('/whoami')
+            .withHeaders({ 'X-Custom-Header': '123' })
+            .thenJSON(200, { data: { status: 'ok' } }),
+          mockServer
+            .get('/whoami')
+            .thenJSON(200, { data: { status: 'error' } }),
         ]);
       });
   });
@@ -247,6 +254,30 @@ describe('Testing crest proxy', () => {
       .then((user) => {
         assert.equal(user.id, 103);
         assert.equal(user.name, users[2].name);
+      });
+  }).timeout(50000);
+
+  it('should be able to use custom request headers', function () {
+    const api = crest({ baseUrl: 'http://localhost:5005' })
+      .useAxios()
+      .addResponseInterceptor((response, method) => {
+        const data = response.data;
+        return (method === 'get' && data.data) ? data.data : data;
+      });
+    assert.exists(api);
+
+    return api
+      .getWhoami()
+      .then((whoamiResponse) => {
+        assert.isOk(whoamiResponse);
+        assert.equal(whoamiResponse.status, 'error');
+
+        api.setCustomHeaders({ 'X-Custom-Header': '123' });
+        return api.getWhoami();
+      })
+      .then((whoamiResponse) => {
+        assert.isOk(whoamiResponse);
+        assert.equal(whoamiResponse.status, 'ok');
       });
   });
 });
