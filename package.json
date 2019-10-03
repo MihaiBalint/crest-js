@@ -1,6 +1,6 @@
 {
   "name": "crest-js",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Javascript client for REST APIs",
   "main": "./src/index.js",
   "scripts": {

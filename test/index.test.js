@@ -137,7 +137,7 @@ describe('Testing crest url path', () => {
         'reposStatsCommitActivity', [':owner', ':repo'],
         { repos: 'repos/${}/${}', CommitActivity: 'commit_activity' }
       )[0],
-      'repos/:owner/:repo/stats/commit_activity'
+      'repos/%3Aowner/%3Arepo/stats/commit_activity'
     );
   });
 
@@ -147,7 +147,7 @@ describe('Testing crest url path', () => {
         'userStarred', [':owner', ':repo'],
         { userStarred: 'user/starred/${}/${}' }
       )[0],
-      'user/starred/:owner/:repo'
+      'user/starred/%3Aowner/%3Arepo'
     );
   });
 });
@@ -173,6 +173,13 @@ describe('Testing crest proxy', () => {
           mockServer.delete('/user/starred/MihaiBalint/crest-js').thenJSON(200, { }),
           mockServer.get('/repos/MihaiBalint/crest-js/stats/commit_activity').thenJSON(200, { }),
           mockServer.post('/authorizations').thenJSON(200, { }),
+          mockServer
+            .get('/pathencode/path   escape')
+            .thenJSON(200, { data: { status: 'ok' } }),
+          mockServer
+            .get('/urlencode')
+            .withQuery({ 'arg  arg': 'val / = % value' })
+            .thenJSON(200, { data: { status: 'ok' } }),
           mockServer
             .get('/whoami')
             .withHeaders({ 'X-Custom-Header': '123' })
@@ -232,6 +239,40 @@ describe('Testing crest proxy', () => {
     // POST /authorizations
     assert.exists(await github.postAuthorizations({ json: { scopes: ['public_repo'] } }));
   }).timeout(50000);
+
+  it('should encode url path components correctly', function () {
+    const api = crest({ baseUrl: 'http://localhost:5005' })
+      .useAxios()
+      .addResponseInterceptor((response, method) => {
+        const data = response.data;
+        return (method === 'get' && data.data) ? data.data : data;
+      });
+    assert.exists(api);
+
+    return api
+      .getPathencode('path   escape')
+      .then((whoamiResponse) => {
+        assert.isOk(whoamiResponse);
+        assert.equal(whoamiResponse.status, 'ok');
+      });
+  });
+
+  it('should encode url query components correctly', function () {
+    const api = crest({ baseUrl: 'http://localhost:5005' })
+      .useAxios()
+      .addResponseInterceptor((response, method) => {
+        const data = response.data;
+        return (method === 'get' && data.data) ? data.data : data;
+      });
+    assert.exists(api);
+
+    return api
+      .getUrlencode({ 'arg  arg': 'val / = % value' })
+      .then((whoamiResponse) => {
+        assert.isOk(whoamiResponse);
+        assert.equal(whoamiResponse.status, 'ok');
+      });
+  });
 
   it('should do basic axios requests', function () {
     const api = crest({ baseUrl: 'http://localhost:5005' })
