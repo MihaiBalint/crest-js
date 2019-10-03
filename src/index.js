@@ -60,6 +60,7 @@ const interpolateArgs = (url, args) => {
 
   // Stage 2: extract query arguments and request body
   let body = {};
+  let headers = {};
   let queryArgs = {};
   if (nonPathArgs && nonPathArgs.length > 0) {
     queryArgs = nonPathArgs[0];
@@ -73,6 +74,10 @@ const interpolateArgs = (url, args) => {
       // TODO: set correct content type header
       body = queryArgs.data;
       delete queryArgs.data;
+    } else if (queryArgs.headers) {
+      // TODO: assert nonPathArgs.length === 1
+      headers = queryArgs.headers;
+      delete queryArgs.headers;
     } else if (nonPathArgs.length > 1) {
       // TODO: assert nonPathArgs.length === 2
       // TODO: set correct content type header
@@ -82,15 +87,19 @@ const interpolateArgs = (url, args) => {
 
   // Stage 3: interpolate query arguments
   const query = querystring.stringify(queryArgs || {});
-  return [!query ? url : `${url}?${query}`, body];
+  return [!query ? url : `${url}?${query}`, body, headers];
 };
 
 
-const makeUrlAndBody = (urlKey, args, pathKeywords) => {
+const makeUrlBodyAndHeaders = (urlKey, args, pathKeywords) => {
   const path = makeUrlPath(urlKey, pathKeywords);
   return interpolateArgs(path, args);
 };
 
+const makeUrlAndBody = (urlKey, args, pathKeywords) => {
+  const result = makeUrlBodyAndHeaders(urlKey, args, pathKeywords);
+  return result.slice(0, 2);
+};
 
 const axiosRequest = (method, url, headers, body) => {
   /* eslint import/no-unresolved: ["off"] */
@@ -115,11 +124,11 @@ class Client {
     this.responseInterceptors = [];
   }
 
-  request(method, url, body) {
+  request(method, url, body, requestHeaders) {
     return this
       .requestLib(
         method, url,
-        Object.assign({}, this._customHeaders, this.authHeader),
+        Object.assign({}, this._customHeaders, this.authHeader, requestHeaders),
         body
       )
       .then((response) => {
@@ -161,8 +170,8 @@ exports.crest = ({ baseUrl, specialFragments }) => {
         const [method, strippedKey] = splitMethod(propKey);
         if (method) {
           return (...args) => {
-            const [url, body] = makeUrlAndBody(strippedKey, args, specialFragments);
-            return client.request(method, `${baseUrl}${separator}${url}`, body);
+            const [url, body, headers] = makeUrlBodyAndHeaders(strippedKey, args, specialFragments);
+            return client.request(method, `${baseUrl}${separator}${url}`, body, headers);
           };
         }
         return (...args) => {
@@ -178,6 +187,7 @@ exports.crest = ({ baseUrl, specialFragments }) => {
 
 exports.crestUtils = {
   isNotStructure,
+  makeUrlBodyAndHeaders,
   makeUrlAndBody,
   makeUrlPath,
   interpolateArgs,

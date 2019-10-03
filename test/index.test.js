@@ -100,7 +100,7 @@ describe('Testing crest url path', () => {
 
   it('should interpolate arguments', function () {
     const makeUrl = (urlKey, args, pathKeywords) => {
-      return crestUtils.makeUrlAndBody(urlKey, args, pathKeywords)[0];
+      return crestUtils.makeUrlBodyAndHeaders(urlKey, args, pathKeywords)[0];
     };
     assert.equal(makeUrl('users', []), 'users');
     assert.equal(makeUrl('users'), 'users');
@@ -133,7 +133,7 @@ describe('Testing crest url path', () => {
 
   it('should interpolate consecutive arguments #1', () => {
     assert.equal(
-      crestUtils.makeUrlAndBody(
+      crestUtils.makeUrlBodyAndHeaders(
         'reposStatsCommitActivity', [':owner', ':repo'],
         { repos: 'repos/${}/${}', CommitActivity: 'commit_activity' }
       )[0],
@@ -143,7 +143,7 @@ describe('Testing crest url path', () => {
 
   it('should interpolate consecutive arguments #2', () => {
     assert.equal(
-      crestUtils.makeUrlAndBody(
+      crestUtils.makeUrlBodyAndHeaders(
         'userStarred', [':owner', ':repo'],
         { userStarred: 'user/starred/${}/${}' }
       )[0],
@@ -255,9 +255,9 @@ describe('Testing crest proxy', () => {
         assert.equal(user.id, 103);
         assert.equal(user.name, users[2].name);
       });
-  }).timeout(50000);
+  });
 
-  it('should be able to use custom request headers', function () {
+  it('should be able to use custom headers', function () {
     const api = crest({ baseUrl: 'http://localhost:5005' })
       .useAxios()
       .addResponseInterceptor((response, method) => {
@@ -275,6 +275,23 @@ describe('Testing crest proxy', () => {
         api.setCustomHeaders({ 'X-Custom-Header': '123' });
         return api.getWhoami();
       })
+      .then((whoamiResponse) => {
+        assert.isOk(whoamiResponse);
+        assert.equal(whoamiResponse.status, 'ok');
+      });
+  });
+
+  it('should be able to use custom per-request headers', function () {
+    const api = crest({ baseUrl: 'http://localhost:5005' })
+      .useAxios()
+      .addResponseInterceptor((response, method) => {
+        const data = response.data;
+        return (method === 'get' && data.data) ? data.data : data;
+      });
+    assert.exists(api);
+
+    return api
+      .getWhoami({ headers: { 'X-Custom-Header': '123' } })
       .then((whoamiResponse) => {
         assert.isOk(whoamiResponse);
         assert.equal(whoamiResponse.status, 'ok');
