@@ -51,11 +51,12 @@ const interpolateArgs = (url, args) => {
 
   url = url.replace(/\/\$\{\}/g, () => {
     const a = pathArgs.shift();
-    return a ? `/${a}` : '';
+    return a ? `/${encodeURIComponent(a)}` : '';
   });
   while (pathArgs.length > 0) {
     // Append final path arguments
-    url = `${url}/${pathArgs.shift()}`;
+    const a = pathArgs.shift();
+    url = `${url}/${encodeURIComponent(a)}`;
   }
 
   // Stage 2: extract query arguments and request body
