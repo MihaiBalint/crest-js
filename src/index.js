@@ -24,12 +24,14 @@ const splitMethod = (urlKey) => {
 
 const makeUrlPath = (urlKey, pathKeywords) => {
   const sep = '/${}/';
-  return Object
-    .keys(pathKeywords || {}).reduce((url, fragment) => {
-      return url
-        .replace(fragment, `${sep}${pathKeywords[fragment]}`.toLowerCase())
-        .substring(url.indexOf(fragment) === 0 ? sep.length : 0);
-    }, urlKey)
+  const pathKeys = Object
+    .keys(pathKeywords || {}).sort().reverse();
+
+  return pathKeys.reduce((url, fragment) => {
+    return url
+      .replace(fragment, `${sep}${pathKeywords[fragment]}`.toLowerCase())
+      .substring(url.indexOf(fragment) === 0 ? sep.length : 0);
+  }, urlKey)
     .replace(/([a-z0-9])([A-Z])/g, `$1${sep}$2`)
     .replace(/([}])([A-Z])/g, '$1/$2')
     .toLowerCase();
