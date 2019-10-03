@@ -109,6 +109,7 @@ class Client {
     this.requestLib = axiosRequest;
     this.interceptResponse = null;
     this.authHeader = null;
+    this._customHeaders = null;
     this.responseInterceptors = [];
   }
 
@@ -116,7 +117,7 @@ class Client {
     return this
       .requestLib(
         method, url,
-        Object.assign({}, this.authHeader),
+        Object.assign({}, this._customHeaders, this.authHeader),
         body
       )
       .then((response) => {
@@ -133,6 +134,10 @@ class Client {
 
   authorizationBasic(hash) {
     this.authHeader = { Authorization: `Basic ${hash}` };
+  }
+
+  setCustomHeaders(headerDict) {
+    this._customHeaders = headerDict;
   }
 
   addResponseInterceptor(interceptor) {
