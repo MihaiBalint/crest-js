@@ -80,6 +80,18 @@ So what actually happened there? Crest converts camel-case method names to URLs
 and interpolates method arguments to obtain the url path. Query parameters and
 request payloads are added using dict arguments.
 
+### Custom request headers
+
+When you need to send some proproetary headers with every request, you could do the following:
+```js
+const github = crest({ baseUrl: 'https://proprietary-api.example.com' })
+  .setCustomHeaders({ 'X-Custom-Header': 'your-proprietary-value' });
+
+const bits = await github.getBits('proprietary');
+// translates to: GET /bits/proprietary with http headers:
+// X-Custom-Header: your-proprietary-value
+```
+
 ## Installation
 
 node:
